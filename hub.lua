@@ -588,4 +588,86 @@ local function buildHub()
 	sLabel.TextColor3 = Color3.new(1, 1, 1)
 	sLabel.Font = Enum.Font.Gotham
 	sLabel.TextSize = 12
-	sLabel.TextXAlignment = En
+	sLabel.TextXAlignment = Enum.TextXAlignment.Left
+	sLabel.Parent = sRow
+
+	local sBar = Instance.new("Frame")
+	sBar.Size = UDim2.new(1, -20, 0, 8)
+	sBar.Position = UDim2.new(0, 10, 0, 30)
+	sBar.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+	sBar.BorderSizePixel = 0
+	sBar.Parent = sRow
+	Instance.new("UICorner", sBar).CornerRadius = UDim.new(1, 0)
+
+	local sFill = Instance.new("Frame")
+	sFill.BackgroundColor3 = Color3.fromRGB(255, 200, 60)
+	sFill.BorderSizePixel = 0
+	sFill.Parent = sBar
+	Instance.new("UICorner", sFill).CornerRadius = UDim.new(1, 0)
+
+	local MIN, MAX = 0.4, 1.0
+	local function setSlider(rel)
+		rel = math.clamp(rel, 0, 1)
+		state.stretchVal = MIN + rel * (MAX - MIN)
+		sFill.Size = UDim2.new(rel, 0, 1, 0)
+		sLabel.Text = string.format("Intensidade da esticada: %d%%", math.floor((1 - state.stretchVal) / (1 - MIN) * 100 + 0.5))
+	end
+	setSlider((state.stretchVal - MIN) / (MAX - MIN))
+
+	local sDrag = false
+	sRow.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			sDrag = true
+			setSlider((i.Position.X - sBar.AbsolutePosition.X) / sBar.AbsoluteSize.X)
+		end
+	end)
+	UIS.InputChanged:Connect(function(i)
+		if sDrag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			setSlider((i.Position.X - sBar.AbsolutePosition.X) / sBar.AbsoluteSize.X)
+		end
+	end)
+	UIS.InputEnded:Connect(function(i)
+		if sDrag and (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) then
+			sDrag = false
+			save()
+		end
+	end)
+
+	makeToggle("Remover efeitos (raio/explosão)", "fx", function(v) if v then enableFx() else disableFx() end end)
+	makeToggle("Remover sons/música", "snd", function(v)
+		if not v then for s, vol in pairs(origVol) do pcall(function() s.Volume = vol end) end end
+	end)
+	makeToggle("Menu sem animação", "anim", function() end)
+end
+
+---------------------------------------------------------------- INICIALIZAÇÃO
+task.spawn(function()
+	stepTo(0.15, "Carregando configurações...")
+
+	local t0 = os.clock()
+	while not lp.Character and os.clock() - t0 < 10 do task.wait() end
+	lp:WaitForChild("PlayerGui", 10)
+	stepTo(0.4, "Esperando o jogo...")
+
+	buildHub()
+	stepTo(0.6, "Montando o hub...")
+
+	for _, apply in ipairs(toggles) do
+		apply()
+		task.wait()
+	end
+	stepTo(0.9, "Aplicando suas opções...")
+
+	stepTo(1, "Pronto!")
+	task.wait(0.3)
+
+	loading = false
+	loadConn:Disconnect()
+	center.Visible = false
+	for _, c in ipairs(bg:GetChildren()) do
+		if c ~= center then c:Destroy() end
+	end
+	local t = TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+	t:Play(); t.Completed:Wait()
+	loadGui:Destroy()
+end)
