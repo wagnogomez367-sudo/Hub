@@ -26,6 +26,20 @@ local alive = true
 local conns = {}
 local function keep(c) conns[#conns + 1] = c return c end
 
+local function mk(class, props, parent)
+	local o = Instance.new(class)
+	for k, v in pairs(props) do o[k] = v end
+	o.Parent = parent
+	return o
+end
+local function round(o, r) mk("UICorner", {CornerRadius = UDim.new(0, r)}, o) end
+local function isPress(i)
+	return i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch
+end
+local function isMove(i)
+	return i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch
+end
+
 ---------------------------------------------------------------- CONFIG
 local FILE = "TigrimHub_config.json"
 local defaults = {
@@ -61,68 +75,40 @@ local ORANGE = Color3.fromRGB(255, 130, 20)
 local DARK = Color3.fromRGB(45, 30, 20)
 local EMBER = {Color3.fromRGB(255, 140, 30), Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 80, 20)}
 
-local lg = Instance.new("ScreenGui")
-lg.Name = "TigrimLoad"
-lg.ResetOnSpawn = false
-lg.IgnoreGuiInset = true
-lg.DisplayOrder = 10000
-lg.Parent = guiParent
+local lg = mk("ScreenGui", {Name = "TigrimLoad", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 10000}, guiParent)
+local bg = mk("Frame", {Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Active = true}, lg)
+local center = mk("Frame", {
+	Size = UDim2.new(0, 220, 0, 220), AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundTransparency = 1,
+}, bg)
 
-local bg = Instance.new("Frame")
-bg.Size = UDim2.new(1, 0, 1, 0)
-bg.BackgroundColor3 = Color3.new(0, 0, 0)
-bg.BorderSizePixel = 0
-bg.Active = true
-bg.Parent = lg
-
-local center = Instance.new("Frame")
-center.Size = UDim2.new(0, 220, 0, 220)
-center.AnchorPoint = Vector2.new(0.5, 0.5)
-center.Position = UDim2.new(0.5, 0, 0.5, 0)
-center.BackgroundTransparency = 1
-center.Parent = bg
-
-local N = 60
+local N = 48
 local segs = {}
 for i = 1, N do
 	local a = (i - 1) / N * math.pi * 2 - math.pi / 2
-	local s = Instance.new("Frame")
-	s.Size = UDim2.new(0, 4, 0, 14)
-	s.AnchorPoint = Vector2.new(0.5, 0.5)
-	s.Position = UDim2.new(0.5, math.cos(a) * 95, 0.5, math.sin(a) * 95)
-	s.Rotation = math.deg(a) + 90
-	s.BackgroundColor3 = DARK
-	s.BorderSizePixel = 0
-	s.Parent = center
-	segs[i] = s
+	segs[i] = mk("Frame", {
+		Size = UDim2.new(0, 4, 0, 14), AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, math.cos(a) * 95, 0.5, math.sin(a) * 95),
+		Rotation = math.deg(a) + 90, BackgroundColor3 = DARK, BorderSizePixel = 0,
+	}, center)
 end
 
-local orb = Instance.new("Frame")
-orb.Size = UDim2.new(0, 96, 0, 96)
-orb.AnchorPoint = Vector2.new(0.5, 0.5)
-orb.Position = UDim2.new(0.5, 0, 0.5, 0)
-orb.BackgroundColor3 = Color3.new(1, 1, 1)
-orb.BorderSizePixel = 0
-orb.Parent = center
-Instance.new("UICorner", orb).CornerRadius = UDim.new(1, 0)
-local og = Instance.new("UIGradient", orb)
-og.Color = ColorSequence.new(Color3.fromRGB(255, 220, 90), Color3.fromRGB(230, 60, 10))
-og.Rotation = 90
-local ost = Instance.new("UIStroke", orb)
-ost.Color = ORANGE
-ost.Thickness = 3
+local orb = mk("Frame", {
+	Size = UDim2.new(0, 96, 0, 96), AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.5, 0), BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
+}, center)
+round(orb, 60)
+mk("UIGradient", {
+	Color = ColorSequence.new(Color3.fromRGB(255, 220, 90), Color3.fromRGB(230, 60, 10)), Rotation = 90,
+}, orb)
+mk("UIStroke", {Color = ORANGE, Thickness = 3}, orb)
 
 local function mkLabel(y, size, font, color)
-	local l = Instance.new("TextLabel")
-	l.Size = UDim2.new(0, 260, 0, size + 6)
-	l.AnchorPoint = Vector2.new(0.5, 0.5)
-	l.Position = UDim2.new(0.5, 0, 0.5, y)
-	l.BackgroundTransparency = 1
-	l.TextColor3 = color
-	l.Font = font
-	l.TextSize = size
-	l.Parent = center
-	return l
+	return mk("TextLabel", {
+		Size = UDim2.new(0, 260, 0, size + 6), AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, y), BackgroundTransparency = 1,
+		TextColor3 = color, Font = font, TextSize = size,
+	}, center)
 end
 local pct = mkLabel(145, 28, Enum.Font.GothamBold, Color3.new(1, 1, 1))
 pct.Text = "0%"
@@ -150,13 +136,11 @@ loadConn = RunService.Heartbeat:Connect(function(dt)
 		acc = 0
 		for _ = 1, 2 do
 			local s = math.random(3, 7)
-			local f = Instance.new("Frame")
-			f.Size = UDim2.new(0, s, 0, s)
-			f.AnchorPoint = Vector2.new(0.5, 0.5)
-			f.BackgroundColor3 = EMBER[math.random(1, #EMBER)]
-			f.BorderSizePixel = 0
-			Instance.new("UICorner", f).CornerRadius = UDim.new(1, 0)
-			f.Parent = bg
+			local f = mk("Frame", {
+				Size = UDim2.new(0, s, 0, s), AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundColor3 = EMBER[math.random(1, #EMBER)], BorderSizePixel = 0,
+			}, bg)
+			round(f, 10)
 			embers[#embers + 1] = {f = f, age = 0, life = math.random(18, 30) / 10,
 				x = math.random(-110, 110), dx = math.random(-40, 40),
 				y0 = math.random(60, 140), rise = math.random(240, 460)}
@@ -233,6 +217,9 @@ local function boostObj(o)
 		if o.Name:lower():find("grass") then o.Color = COR_CHAO end
 	end
 end
+local function isSkyLike(v)
+	return v:IsA("PostEffect") or v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds")
+end
 local function enableBoost()
 	pcall(function() Lighting.GlobalShadows = false end)
 	Lighting.FogEnd = 9e9
@@ -240,14 +227,11 @@ local function enableBoost()
 	Lighting.OutdoorAmbient = Color3.fromRGB(170, 170, 170)
 	Lighting.Brightness = 2
 	for _, v in ipairs(Lighting:GetChildren()) do
-		if v:IsA("PostEffect") or v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds") then v:Destroy() end
+		if isSkyLike(v) then v:Destroy() end
 	end
-	boostAtm = Instance.new("Atmosphere")
-	boostAtm.Density, boostAtm.Offset, boostAtm.Glare, boostAtm.Haze = 1, 1, 0, 0
-	boostAtm.Color, boostAtm.Decay = COR_CEU, COR_CEU
-	boostAtm.Parent = Lighting
+	boostAtm = mk("Atmosphere", {Density = 1, Offset = 1, Glare = 0, Haze = 0, Color = COR_CEU, Decay = COR_CEU}, Lighting)
 	boostConns[#boostConns + 1] = Lighting.ChildAdded:Connect(function(v)
-		if v ~= boostAtm and (v:IsA("PostEffect") or v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds")) then
+		if v ~= boostAtm and isSkyLike(v) then
 			task.defer(function() pcall(function() v:Destroy() end) end)
 		end
 	end)
@@ -434,7 +418,7 @@ if hookmetamethod and getnamecallmethod then
 						end
 					elseif m == "TweenPosition" or m == "TweenSize" or m == "TweenSizeAndPosition" then
 						if pcall(function() return self.AbsoluteSize end) then
-							local a, b, c, d, e, f, g = ...
+							local a, b, _, _, _, f, g = ...
 							local cb
 							if m == "TweenPosition" then self.Position = a; cb = f
 							elseif m == "TweenSize" then self.Size = a; cb = f
@@ -550,13 +534,13 @@ local function makeDraggable(handle, target)
 	local info = {moved = false}
 	local dragging, startPos, startFrame
 	handle.InputBegan:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		if isPress(i) then
 			dragging, info.moved = true, false
 			startPos, startFrame = i.Position, target.Position
 		end
 	end)
 	keep(UIS.InputChanged:Connect(function(i)
-		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+		if dragging and isMove(i) then
 			local d = i.Position - startPos
 			if d.Magnitude > 6 then info.moved = true end
 			target.Position = UDim2.new(startFrame.X.Scale, startFrame.X.Offset + d.X,
@@ -564,39 +548,182 @@ local function makeDraggable(handle, target)
 		end
 	end))
 	keep(UIS.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging = false
-		end
+		if isPress(i) then dragging = false end
 	end))
 	return info
+end
+
+local function buildSlider(list, order)
+	local sRow = mk("Frame", {LayoutOrder = order, Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = Color3.fromRGB(45, 45, 55)}, list)
+	round(sRow, 6)
+	local sLabel = mk("TextLabel", {
+		Size = UDim2.new(1, -10, 0, 20), Position = UDim2.new(0, 8, 0, 3), BackgroundTransparency = 1,
+		TextColor3 = Color3.new(1, 1, 1), Font = Enum.Font.Gotham, TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, sRow)
+	local sBar = mk("Frame", {
+		Size = UDim2.new(1, -20, 0, 8), Position = UDim2.new(0, 10, 0, 30),
+		BackgroundColor3 = Color3.fromRGB(80, 80, 90), BorderSizePixel = 0,
+	}, sRow)
+	round(sBar, 4)
+	local sFill = mk("Frame", {BackgroundColor3 = Color3.fromRGB(255, 200, 60), BorderSizePixel = 0}, sBar)
+	round(sFill, 4)
+
+	local MIN, MAX = 0.4, 1.0
+	local function setSlider(rel)
+		rel = math.clamp(rel, 0, 1)
+		S.stretchVal = MIN + rel * (MAX - MIN)
+		sFill.Size = UDim2.new(rel, 0, 1, 0)
+		sLabel.Text = string.format("Intensidade da esticada: %d%%",
+			math.floor((1 - S.stretchVal) / (1 - MIN) * 100 + 0.5))
+	end
+	setSlider((S.stretchVal - MIN) / (MAX - MIN))
+
+	local sDrag = false
+	sRow.InputBegan:Connect(function(inp)
+		if isPress(inp) then
+			sDrag = true
+			setSlider((inp.Position.X - sBar.AbsolutePosition.X) / sBar.AbsoluteSize.X)
+		end
+	end)
+	keep(UIS.InputChanged:Connect(function(inp)
+		if sDrag and isMove(inp) then
+			setSlider((inp.Position.X - sBar.AbsolutePosition.X) / sBar.AbsoluteSize.X)
+		end
+	end))
+	keep(UIS.InputEnded:Connect(function(inp)
+		if sDrag and isPress(inp) then
+			sDrag = false
+			save()
+		end
+	end))
 end
 
 local function buildHub()
 	gui.Parent = guiParent
 
-	local main = Instance.new("Frame")
-	main.Size = UDim2.new(0, 250, 0, 330)
-	main.Position = UDim2.new(0.5, -125, 0.5, -165)
-	main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-	main.BorderSizePixel = 0
-	main.Active = true
-	main.Parent = gui
-	Instance.new("UICorner", main).CornerRadius = UDim.new(0, 8)
+	local main = mk("Frame", {
+		Size = UDim2.new(0, 250, 0, 330), Position = UDim2.new(0.5, -125, 0.5, -165),
+		BackgroundColor3 = Color3.fromRGB(25, 25, 30), BorderSizePixel = 0, Active = true,
+	}, gui)
+	round(main, 8)
 
-	local bar = Instance.new("Frame")
-	bar.Size = UDim2.new(1, 0, 0, 30)
-	bar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-	bar.BorderSizePixel = 0
-	bar.Parent = main
-	Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 8)
+	local bar = mk("Frame", {Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = Color3.fromRGB(40, 40, 50), BorderSizePixel = 0}, main)
+	round(bar, 8)
+	mk("TextLabel", {
+		Size = UDim2.new(1, -40, 1, 0), Position = UDim2.new(0, 10, 0, 0), BackgroundTransparency = 1,
+		Text = "Criador: TIGRIM021", TextColor3 = Color3.fromRGB(255, 200, 60),
+		Font = Enum.Font.GothamBold, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left,
+	}, bar)
+	local closeBtn = mk("TextButton", {
+		Size = UDim2.new(0, 26, 0, 22), Position = UDim2.new(1, -30, 0, 4),
+		BackgroundColor3 = Color3.fromRGB(200, 50, 50), Text = "X", TextColor3 = Color3.new(1, 1, 1),
+		Font = Enum.Font.GothamBold, TextSize = 14,
+	}, bar)
+	round(closeBtn, 6)
+	makeDraggable(bar, main)
 
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -40, 1, 0)
-	title.Position = UDim2.new(0, 10, 0, 0)
-	title.BackgroundTransparency = 1
-	title.Text = "Criador: TIGRIM021"
-	title.TextColor3 = Color3.fromRGB(255, 200, 60)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 14
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent =
+	local list = mk("ScrollingFrame", {
+		Size = UDim2.new(1, -16, 1, -40), Position = UDim2.new(0, 8, 0, 36), BackgroundTransparency = 1,
+		BorderSizePixel = 0, ScrollBarThickness = 3, CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	}, main)
+	mk("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder}, list)
+
+	local mini = mk("TextButton", {
+		Size = UDim2.new(0, 40, 0, 40), Position = UDim2.new(0, 10, 0.5, 0),
+		BackgroundColor3 = Color3.fromRGB(255, 200, 60), Text = "T", TextColor3 = Color3.new(0, 0, 0),
+		Font = Enum.Font.GothamBold, TextSize = 20, Visible = false,
+	}, gui)
+	round(mini, 20)
+	local miniDrag = makeDraggable(mini, mini)
+	closeBtn.Activated:Connect(function() main.Visible = false; mini.Visible = true end)
+	mini.Activated:Connect(function()
+		if miniDrag.moved then return end
+		mini.Visible = false; main.Visible = true
+	end)
+
+	fpsLabel = mk("TextLabel", {
+		Size = UDim2.new(0, 170, 0, 22), Position = UDim2.new(0, 70, 0, 6),
+		BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5,
+		TextColor3 = Color3.new(1, 1, 1), Font = Enum.Font.Code, TextSize = 14,
+		Text = "FPS: -- | -- ms", Visible = S.fps,
+	}, gui)
+	local fr, ft = 0, 0
+	keep(RunService.RenderStepped:Connect(function(dt)
+		if not S.fps then return end
+		fr = fr + 1; ft = ft + dt
+		if ft >= 0.5 then
+			fpsLabel.Text = string.format("FPS: %.1f | %.1f ms", fr / ft, (ft / fr) * 1000)
+			fr, ft = 0, 0
+		end
+	end))
+
+	for i, it in ipairs(ITEMS) do
+		if it[1] == "SLIDER" then
+			buildSlider(list, i)
+		else
+			local text, key = it[1], it[2]
+			local b = mk("TextButton", {
+				LayoutOrder = i, Size = UDim2.new(1, 0, 0, 32), TextColor3 = Color3.new(1, 1, 1),
+				Font = Enum.Font.Gotham, TextSize = 13,
+			}, list)
+			round(b, 6)
+			local function refresh()
+				b.Text = text .. ":  " .. (S[key] and "ON" or "OFF")
+				b.BackgroundColor3 = S[key] and Color3.fromRGB(40, 140, 70) or Color3.fromRGB(45, 45, 55)
+			end
+			b.Activated:Connect(function()
+				S[key] = not S[key]
+				refresh()
+				task.spawn(function() pcall(onChange[key], S[key]) end)
+				save()
+			end)
+			refresh()
+		end
+	end
+end
+
+env.TigrimStop = function()
+	alive = false
+	for _, c in ipairs(conns) do c:Disconnect() end
+	pcall(function() RunService:UnbindFromRenderStep("TigrimStretch") end)
+	unmuteAll()
+	restore(cat.glow)
+	restore(cat.dest)
+	for p in pairs(auras) do removeAura(p) end
+	pcall(function() gui:Destroy() end)
+	pcall(function() auraFolder:Destroy() end)
+	pcall(loadClose)
+end
+
+---------------------------------------------------------------- INICIAR
+task.spawn(function()
+	local t0 = os.clock()
+	while not lp.Character and os.clock() - t0 < 10 do task.wait() end
+	loadStep(0.4, "Montando o hub...")
+	local ok2, e2 = pcall(buildHub)
+	if not ok2 then notify("Erro no hub: " .. tostring(e2)) end
+	loadStep(0.7, "Aplicando suas opções...")
+	for _, it in ipairs(ITEMS) do
+		local key = it[2]
+		if key and S[key] and onChange[key] then
+			task.spawn(function()
+				local ok3, e3 = pcall(onChange[key], true)
+				if not ok3 then warn("[Tigrim] " .. key .. ": " .. tostring(e3)) end
+			end)
+		end
+	end
+	task.wait(1)
+	loadFinish()
+	if not hooked then
+		notify("Seu executor não tem hookmetamethod: menu sem animação e parte dos sons podem não funcionar.")
+	end
+end)
+end)
+
+if not ok then
+	warn("[Tigrim] ERRO: " .. tostring(err))
+	notify("ERRO: " .. tostring(err))
+end
+-- FIM
